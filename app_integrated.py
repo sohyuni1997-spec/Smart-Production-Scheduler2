@@ -100,75 +100,95 @@ with tab1:
         target_version = extract_version(user_input)
         product_key = extract_product_keyword(user_input)
 
-        context_log = ""
+        # ===== [긴급 테스트] 무조건 출력 =====
+        st.write("=" * 60)
+        st.write("🔍 **[긴급 디버깅 - 변수 추출 결과]**")
+        st.write("=" * 60)
+        st.write(f"📝 **입력 질문**: `{user_input}`")
+        st.write(f"📅 **target_month**: `{target_month}` (타입: {type(target_month)})")
+        st.write(f"🏷️ **target_version**: `{target_version}` (타입: {type(target_version)})")
+        st.write(f"🔑 **product_key**: `{product_key}` (타입: {type(product_key)})")
+        st.write(f"📆 **target_date**: `{target_date}`")
+        st.write("")
+        st.write("🔍 **[조건 체크]**")
+        st.write(f"- `'비교' in user_input`: {('비교' in user_input)}")
+        st.write(f"- `'초과' in user_input`: {('초과' in user_input)}")
+        st.write(f"- `'사례' in user_input`: {('사례' in user_input)}")
+        st.write(f"- `product_key is None`: {(product_key is None)}")
+        st.write("")
         
-        # ===== [디버깅] 추출된 값 확인 =====
-        debug_info = f"""
-🔍 [디버깅 정보]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 입력 질문: {user_input}
-📅 추출된 월(target_month): {target_month}
-🏷️ 추출된 버전(target_version): {target_version}
-🔑 추출된 제품키(product_key): {product_key}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
+        # 조건 최종 판정
+        condition_met = (
+            target_month and 
+            product_key is None and 
+            "비교" not in user_input and 
+            "초과" not in user_input and 
+            "사례" not in user_input
+        )
+        st.write(f"✅ **최종 조건 충족 여부**: `{condition_met}`")
+        
+        if condition_met:
+            st.success("✅ 단일 월 조회 조건 충족! DB 조회를 시작합니다.")
+        else:
+            st.error("❌ 단일 월 조회 조건 미충족")
+            st.write("**미충족 이유:**")
+            if not target_month:
+                st.write("- target_month가 None입니다.")
+            if product_key is not None:
+                st.write(f"- product_key가 None이 아닙니다: {product_key}")
+            if "비교" in user_input:
+                st.write("- '비교' 키워드가 포함되어 있습니다.")
+            if "초과" in user_input:
+                st.write("- '초과' 키워드가 포함되어 있습니다.")
+            if "사례" in user_input:
+                st.write("- '사례' 키워드가 포함되어 있습니다.")
+        
+        st.write("=" * 60)
+
+        context_log = ""
         
         try:
             # ===== [NEW] 단일 월 생산량 조회 =====
             if target_month and product_key is None and "비교" not in user_input and "초과" not in user_input and "사례" not in user_input:
                 
-                # 디버깅: 조건 통과 확인
-                context_log += debug_info
-                context_log += "\n✅ **단일 월 조회 조건 통과**\n"
-                context_log += f"→ DB 쿼리 실행: monthly_production 테이블에서 월={target_month}, 버전={target_version} 조회\n\n"
+                st.write("🔍 **[DB 조회 시작]**")
+                st.write(f"- 테이블: `monthly_production`")
+                st.write(f"- 조건: `월 = {target_month}`, `버전 = {target_version}`")
                 
                 # DB 조회
                 res = supabase.table("monthly_production").select("*").eq("월", target_month).eq("버전", target_version).execute()
                 
-                # 디버깅: DB 응답 확인
-                context_log += f"📊 [DB 응답 상세]\n"
-                context_log += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                context_log += f"- 응답 데이터: {res.data}\n"
-                context_log += f"- 데이터 개수: {len(res.data) if res.data else 0}개\n"
-                context_log += f"- 데이터 타입: {type(res.data)}\n"
+                st.write(f"- 응답 데이터 개수: {len(res.data) if res.data else 0}개")
+                st.write(f"- 응답 데이터: {res.data}")
                 
                 if res.data:
-                    context_log += f"- 첫 번째 레코드 키: {list(res.data[0].keys())}\n"
-                    context_log += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    
+                    st.success("✅ DB 조회 성공!")
                     data = res.data[0]
-                    context_log += f"✅ [조회 성공]\n"
+                    
+                    # 컬럼명 확인
+                    st.write(f"- 데이터 컬럼: {list(data.keys())}")
+                    
                     context_log += f"\n[{target_version} {target_month}월 생산량 조회 결과]\n"
                     context_log += f"- 월: {data['월']}월\n"
                     context_log += f"- 총 생산량: {data['총_생산량']:,}개\n"
                     context_log += f"- 버전: {data['버전']}\n"
                     return context_log
                 else:
-                    context_log += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    context_log += f"❌ [조회 실패] DB에서 데이터를 찾을 수 없습니다.\n\n"
+                    st.error("❌ DB에서 데이터를 찾을 수 없습니다.")
                     
                     # 추가 디버깅: 전체 테이블 구조 확인
-                    context_log += f"🔍 [추가 조사] 테이블 전체 데이터 샘플 확인\n"
+                    st.write("🔍 **[추가 조사] 테이블 전체 데이터 샘플**")
                     all_res = supabase.table("monthly_production").select("*").limit(5).execute()
-                    context_log += f"- 전체 데이터 샘플 (최대 5개):\n"
-                    if all_res.data:
-                        for idx, record in enumerate(all_res.data, 1):
-                            context_log += f"  {idx}. {record}\n"
-                    else:
-                        context_log += f"  (테이블이 비어있거나 접근 불가)\n"
                     
-                    return context_log + f"\n\n❌ **결론**: {target_month}월 {target_version} 데이터를 찾을 수 없습니다."
-            else:
-                # 조건 미충족 시 디버깅 정보
-                context_log += debug_info
-                context_log += "\n⚠️ **단일 월 조회 조건 미충족**\n"
-                context_log += f"조건 체크:\n"
-                context_log += f"- target_month 존재: {bool(target_month)}\n"
-                context_log += f"- product_key is None: {product_key is None}\n"
-                context_log += f"- '비교' 없음: {'비교' not in user_input}\n"
-                context_log += f"- '초과' 없음: {'초과' not in user_input}\n"
-                context_log += f"- '사례' 없음: {'사례' not in user_input}\n"
-                context_log += f"\n→ 다른 조회 로직으로 진행합니다.\n\n"
+                    if all_res.data:
+                        st.write(f"- 전체 데이터 샘플 (최대 5개):")
+                        for idx, record in enumerate(all_res.data, 1):
+                            st.write(f"  {idx}. {record}")
+                    else:
+                        st.write("  (테이블이 비어있거나 접근 불가)")
+                    
+                    context_log += f"\n❌ {target_month}월 {target_version} 데이터를 찾을 수 없습니다."
+                    return context_log
             
             # 과거 이슈 사례 검색
             if "사례" in user_input:
@@ -269,9 +289,13 @@ with tab1:
                 return context_log
 
         except Exception as e:
-            return f"❌ 데이터 조회 중 오류 발생:\n\n```\n{str(e)}\n```\n\n{debug_info}"
+            st.error(f"❌ 예외 발생: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+            return f"❌ 데이터 조회 중 오류 발생: {str(e)}"
 
-        return context_log + "\n\n⚠️ 요청하신 조건에 맞는 데이터를 찾을 수 없습니다."
+        st.warning("⚠️ 모든 조건을 통과하지 못했습니다. 마지막 return으로 이동합니다.")
+        return "요청하신 조건에 맞는 데이터를 찾을 수 없습니다."
 
     def query_gemini_ai(user_input, context):
         system_prompt = f"""
